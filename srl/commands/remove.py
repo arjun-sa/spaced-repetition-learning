@@ -1,4 +1,5 @@
 from rich.console import Console
+from srl.utils import resolve_problem_identifier
 from srl.storage import (
     load_json,
     save_json,
@@ -8,33 +9,22 @@ from srl.storage import (
 
 def add_subparser(subparsers):
     parser = subparsers.add_parser("remove", help="Remove a problem from in-progress")
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument(
-        "name", nargs="?", type=str, help="Name of the problem to remove"
-    )
-    group.add_argument(
-        "-n", "--number", type=int, help="Problem number from `srl inprogress`"
-    )
+    parser.add_argument("identifier", type=str, help="Problem name, URL, or number from `srl inprogress`")
     parser.set_defaults(handler=handle)
     return parser
 
 
 def handle(args, console: Console):
     data = load_json(PROGRESS_FILE)
-    name = getattr(args, "name", None)
 
-    if getattr(args, "number", None) is not None:
-        names = list(data.keys())
+    # Get list of in-progress problems for number resolution
+    in_progress_problems = list(data.keys())
 
-        if args.number < 1 or args.number > len(names):
-            console.print(f"[red]Invalid problem number:[/red] {args.number}")
-            return
-
-        name = names[args.number - 1]
+    # Resolve the identifier (URL, number, or name)
+    name, _ = resolve_problem_identifier(args.identifier, in_progress_problems, console)
 
     if not name:
-        console.print("[red]Invalid args[/red]")
-        return
+        return  # Error already printed by resolver
 
     if name in data:
         del data[name]

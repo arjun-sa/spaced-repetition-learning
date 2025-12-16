@@ -1,5 +1,5 @@
 from rich.console import Console
-from srl.utils import today
+from srl.utils import today, resolve_problem_identifier
 from srl.storage import (
     load_json,
     save_json,
@@ -12,11 +12,7 @@ from srl.commands.list_ import get_due_problems
 
 def add_subparser(subparsers):
     add = subparsers.add_parser("add", help="Add or update a problem attempt")
-    group = add.add_mutually_exclusive_group(required=True)
-    group.add_argument("name", nargs="?", type=str, help="Name of the problem")
-    group.add_argument(
-        "-n", "--number", type=int, help="Problem number from `srl list`"
-    )
+    add.add_argument("identifier", type=str, help="Problem name, URL, or number from `srl list`")
     add.add_argument("rating", type=int, choices=range(1, 6), help="Rating from 1-5")
     add.set_defaults(handler=handle)
     return add
@@ -24,14 +20,15 @@ def add_subparser(subparsers):
 
 def handle(args, console: Console):
     rating: int = args.rating
-    if hasattr(args, "number") and args.number is not None:
-        problems = get_due_problems()
-        if args.number > len(problems) or args.number <= 0:
-            console.print(f"[bold red]Invalid problem number: {args.number}[/bold red]")
-            return
-        name = problems[args.number - 1]
-    else:
-        name: str = args.name
+
+    # Get list of due problems for number resolution
+    problems = get_due_problems()
+
+    # Resolve the identifier (URL, number, or name)
+    name, url = resolve_problem_identifier(args.identifier, problems, console)
+
+    if not name:
+        return  # Error already printed by resolver
 
     data = load_json(PROGRESS_FILE)
 
@@ -45,6 +42,11 @@ def handle(args, console: Console):
     # Use existing name if found, otherwise use the provided name
     target_name = existing_name if existing_name else name
     entry = data.get(target_name, {"history": []})
+
+    # Store URL if provided and not already stored
+    if url and "url" not in entry:
+        entry["url"] = url
+
     entry["history"].append(
         {
             "rating": rating,

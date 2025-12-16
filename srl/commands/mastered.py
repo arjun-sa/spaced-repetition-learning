@@ -1,5 +1,6 @@
 from rich.console import Console
 from rich.table import Table
+from srl.utils import format_problem_link
 from srl.storage import (
     load_json,
     MASTERED_FILE,
@@ -31,8 +32,8 @@ def handle(args, console: Console):
             table.add_column("Attempts", style="magenta")
             table.add_column("Mastered Date", style="green")
 
-            for name, attempts, mastered_date in mastered_problems:
-                table.add_row(name, str(attempts), mastered_date)
+            for name, attempts, mastered_date, url in mastered_problems:
+                table.add_row(format_problem_link(name, url), str(attempts), mastered_date)
 
             console.print(table)
 
@@ -47,6 +48,7 @@ def get_mastered_problems():
             continue
         attempts = len(history)
         mastered_date = history[-1]["date"]
-        mastered.append((name, attempts, mastered_date))
+        url = info.get("url")
+        mastered.append((name, attempts, mastered_date, url))
 
     return mastered

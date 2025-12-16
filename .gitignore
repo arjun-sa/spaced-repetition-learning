@@ -10,6 +10,7 @@ env/
 # IDE or editor-specific files
 .vscode/
 .idea/
+.claude
 *.sublime-workspace
 *.sublime-project
 

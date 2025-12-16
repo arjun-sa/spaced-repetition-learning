@@ -1,6 +1,8 @@
 from types import SimpleNamespace
 from rich.console import Console
 from srl.commands import add, list_
+from srl.utils import format_problem_link
+from srl.storage import load_json, PROGRESS_FILE, NEXT_UP_FILE
 import argparse
 
 
@@ -47,7 +49,11 @@ def handle(args, console: Console):
             )
             return
         add.handle(
-            SimpleNamespace(name=problem, rating=args.rating), console
+            SimpleNamespace(identifier=problem, rating=args.rating), console
         )
     else:
-        console.print(problem)
+        # Load URL for display
+        data = load_json(PROGRESS_FILE)
+        next_up = load_json(NEXT_UP_FILE)
+        url = data.get(problem, {}).get("url") or next_up.get(problem, {}).get("url")
+        console.print(format_problem_link(problem, url))

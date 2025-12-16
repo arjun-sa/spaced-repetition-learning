@@ -1,6 +1,6 @@
 from rich.console import Console
 from rich.panel import Panel
-from srl.utils import today
+from srl.utils import today, format_problem_link
 from srl.commands.audit import get_current_audit, random_audit
 from datetime import datetime, timedelta
 import random
@@ -23,8 +23,13 @@ def handle(args, console: Console):
     if should_audit() and not get_current_audit():
         problem = random_audit()
         if problem:
+            # Load mastered data to get URL for audit problem
+            from srl.storage import MASTERED_FILE
+            mastered = load_json(MASTERED_FILE)
+            url = mastered.get(problem, {}).get("url")
+
             console.print("[bold red]You have been randomly audited![/bold red]")
-            console.print(f"[yellow]Audit problem:[/yellow] [cyan]{problem}[/cyan]")
+            console.print(f"[yellow]Audit problem:[/yellow] [cyan]{format_problem_link(problem, url)}[/cyan]")
             console.print(
                 "Run [green]srl audit --pass[/green] or [red]--fail[/red] when done"
             )
@@ -34,10 +39,16 @@ def handle(args, console: Console):
     masters = mastery_candidates()
 
     if problems:
+        # Load problem data to get URLs
+        data = load_json(PROGRESS_FILE)
+        next_up = load_json(NEXT_UP_FILE)
+
         lines = []
         for i, p in enumerate(problems):
             mark = " [magenta]*[/magenta]" if p in masters else ""
-            lines.append(f"{i+1}. {p}{mark}")
+            # Get URL from either progress or next_up data
+            url = data.get(p, {}).get("url") or next_up.get(p, {}).get("url")
+            lines.append(f"{i+1}. {format_problem_link(p, url)}{mark}")
 
         console.print(
             Panel.fit(

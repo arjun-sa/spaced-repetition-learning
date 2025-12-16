@@ -1,6 +1,6 @@
 from rich.console import Console
 from rich.panel import Panel
-from srl.utils import today
+from srl.utils import today, extract_problem_name_from_url, format_problem_link
 from srl.storage import (
     load_json,
     save_json,
@@ -65,20 +65,21 @@ def handle(args, console: Console):
                     "[bold red]Please provide a problem name to add to Next Up.[/bold red]"
                 )
             else:
-                add_to_next_up(
+                added = add_to_next_up(
                     args.name,
                     console,
                     hasattr(args, "allow_mastered") and args.allow_mastered,
                 )
-                console.print(
-                    f"[green]Added[/green] [bold]{args.name}[/bold] to Next Up Queue"
-                )
+                if added:
+                    console.print(
+                        f"[green]Added[/green] [bold]{args.name}[/bold] to Next Up Queue"
+                    )
     elif args.action == "list":
         next_up = get_next_up_problems()
         if next_up:
             console.print(
                 Panel.fit(
-                    "\n".join(f"• {name}" for name in next_up),
+                    "\n".join(f"• {format_problem_link(name, url)}" for name, url in next_up),
                     title=f"[bold cyan]Next Up Problems ({len(next_up)})[/bold cyan]",
                     border_style="cyan",
                     title_align="left",
@@ -97,11 +98,23 @@ def handle(args, console: Console):
         clear_next_up(console)
 
 
-def add_to_next_up(name, console, allow_mastered=False) -> bool:
+def add_to_next_up(identifier, console, allow_mastered=False) -> bool:
     """
     Add a problem to Next Up queue if not already present, in progress, or mastered.
-    Returns True if added, False otherwise.
+    Accepts name or URL. Returns True if added, False otherwise.
     """
+    # Extract name and URL if it's a URL
+    url = None
+    name = identifier
+    if identifier.startswith('http://') or identifier.startswith('https://'):
+        extracted_name = extract_problem_name_from_url(identifier)
+        if extracted_name:
+            name = extracted_name
+            url = identifier
+        else:
+            console.print(f"[red]Could not extract problem name from URL:[/red] {identifier}")
+            return False
+
     next_up = load_json(NEXT_UP_FILE)
     in_progress = load_json(PROGRESS_FILE)
     mastered = load_json(MASTERED_FILE)
@@ -123,17 +136,21 @@ def add_to_next_up(name, console, allow_mastered=False) -> bool:
             console.print(f'[yellow]"{name}" is already mastered.[/yellow]')
             return False
 
-    next_up[name] = {"added": today().isoformat()}
+    entry = {"added": today().isoformat()}
+    if url:
+        entry["url"] = url
+    next_up[name] = entry
     save_json(NEXT_UP_FILE, next_up)
     return True
 
 
-def get_next_up_problems() -> list[str]:
+def get_next_up_problems() -> list[tuple[str, str]]:
     data = load_json(NEXT_UP_FILE)
     res = []
 
-    for name in data.keys():
-        res.append(name)
+    for name, info in data.items():
+        url = info.get("url") if isinstance(info, dict) else None
+        res.append((name, url))
 
     return res
 

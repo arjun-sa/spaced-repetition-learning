@@ -1,5 +1,6 @@
 from rich.console import Console
 from rich.panel import Panel
+from srl.utils import format_problem_link
 from srl.storage import (
     load_json,
     PROGRESS_FILE,
@@ -17,7 +18,7 @@ def handle(args, console: Console):
     if in_progress:
         console.print(
             Panel.fit(
-                "\n".join(f"{i+1}. {p}" for i, p in enumerate(in_progress)),
+                "\n".join(f"{i+1}. {format_problem_link(name, url)}" for i, (name, url) in enumerate(in_progress)),
                 title=f"[bold magenta]Problems in Progress ({len(in_progress)})[/bold magenta]",
                 border_style="magenta",
                 title_align="left",
@@ -27,11 +28,12 @@ def handle(args, console: Console):
         console.print("[yellow]No problems currently in progress.[/yellow]")
 
 
-def get_in_progress() -> list[str]:
+def get_in_progress() -> list[tuple[str, str]]:
     data = load_json(PROGRESS_FILE)
     res = []
 
-    for name, _ in data.items():
-        res.append(name)
+    for name, info in data.items():
+        url = info.get("url")
+        res.append((name, url))
 
     return res

@@ -1,6 +1,7 @@
 from rich.console import Console
 import random
 from srl.commands.list_ import get_due_problems
+from srl.utils import format_problem_link
 from srl.storage import load_json, PROGRESS_FILE, MASTERED_FILE, NEXT_UP_FILE
 
 
@@ -40,7 +41,9 @@ def handle(args, console: Console):
             return
 
         choice = random.choice(names)
-        console.print(f"[bold blue]Random problem (all):[/bold blue] [cyan]{choice}[/cyan]")
+        # Find URL from any of the data sources
+        url = progress.get(choice, {}).get("url") or mastered.get(choice, {}).get("url") or next_up.get(choice, {}).get("url")
+        console.print(f"[bold blue]Random problem (all):[/bold blue] [cyan]{format_problem_link(choice, url)}[/cyan]")
         return
 
     # default behaviour: pick from due problems (falls back to Next Up)
@@ -50,4 +53,8 @@ def handle(args, console: Console):
         return
 
     choice = random.choice(problems)
-    console.print(f"[bold blue]Random problem:[/bold blue] [cyan]{choice}[/cyan]")
+    # Get URL from progress or next_up
+    progress_data = load_json(PROGRESS_FILE)
+    next_up_data = load_json(NEXT_UP_FILE)
+    url = progress_data.get(choice, {}).get("url") or next_up_data.get(choice, {}).get("url")
+    console.print(f"[bold blue]Random problem:[/bold blue] [cyan]{format_problem_link(choice, url)}[/cyan]")

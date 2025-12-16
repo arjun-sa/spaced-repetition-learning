@@ -13,6 +13,9 @@ from srl.commands import (
     server,
     random,
     generate_preview,
+    migrate,
+    reset,
+    history,
 )
 
 
@@ -33,4 +36,7 @@ def build_parser() -> argparse.ArgumentParser:
     server.add_subparser(subparsers)
     random.add_subparser(subparsers)
     generate_preview.add_subparser(subparsers)
+    migrate.add_subparser(subparsers)
+    reset.add_subparser(subparsers)
+    history.add_subparser(subparsers)
     return parser
